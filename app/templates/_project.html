@@ -1,0 +1,17 @@
+<table class="table table-hover">
+    <tr>
+      <td width="70px">
+        <span>image here</span>
+      </td>
+      <td>
+          <a href="{{ url_for('user.user', username=project.creator.username) }}">
+              {{ project.creator.username }}
+          </a>
+          created {{ moment(project.timestamp).fromNow() }}:
+          <br>
+          <span id="project{{ project.id }}">Name: {{ project.name }}</span><br>
+          <span>Headline: {{ project.headline }}</span><br>
+          <span>Address: {{ project.site.address1 }}</span>
+      </td>
+    </tr>
+</table>

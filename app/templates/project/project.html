@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block app_content %}
+    <table class="table table-hover">
+        <tr>
+            <td width="256px"><img src="{{ user.avatar(256) }}"></td>
+            <td>
+                <h1>Project: {{ project.name }}</h1>
+                {% if project.headline %}<p>{{ project.headline }}</p>{% endif %}
+                {% if project.completion_date %}
+                <p>Completed on: {{ moment(project.completion_date).format('LLL') }}</p>
+                {% endif %}
+                <p>Project Creator: {{ project.creator }}</p>
+                <p>Project Favorites: {{ project.admirer }}</p>
+                {% if project.creator == current_user %}
+                <p><a href="{{ url_for('project.edit_project', project_id=project.id )}}">Edit your project</a></p>
+                {% elif not current_user.is_favorited(project) %}
+                <p><a href="{{ url_for('project.favorite', project_id=project.id )}}">Favorite</a></p>
+                {% else %}
+                <p><a href="{{ url_for('project.unfavorite', project_id=project.id )}}">Unfavorite</a></p>
+                {% endif %}
+                <p> Contributors: {{ project.contributor }} </p>
+                {% if not current_user.has_contributed(project) %}
+                <p><a href="{{ url_for('project.contribute', project_id=project.id) }}">Contribute</a></p>
+                {% else %}
+                <p><a href="{{ url_for('project.uncontribute', project_id=project.id) }}">Uncontribute</a></p>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+    {% if form %}
+    {{ wtf.quick_form(form) }}
+    <br>
+    {% endif %}
+    {# <span>Post Count: {{ posts.count() }}</span> #}
+    {% for post in posts %}
+        {% include '_post.html' %}
+    {% endfor %}
+    <nav aria-label="...">
+        <ul class="pager">
+            <li class="previous{% if not prev_url %} disabled{% endif %}">
+                <a href="{{ prev_url or '#' }}">
+                    <span aria-hidden="true">&larr;</span> Newer posts
+                </a>
+            </li>
+            <li class="next{% if not next_url %} disabled{% endif %}">
+                <a href="{{ next_url or '#' }}">
+                    Older posts <span aria-hidden="true">&rarr;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+{% endblock %}

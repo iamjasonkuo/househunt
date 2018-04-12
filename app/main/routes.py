@@ -1,16 +1,19 @@
 from app import db
-from app.main.forms import PostForm, SearchForm, EditAddressForm
-from app.helper import clean_list, normalize, convertArrayToString, convertStringToArray
+from app.main.forms import PostForm, SearchForm, EditAddressForm, TaggingForm, DemoForm
+from app.helper import clean_list, normalize, convertArrayToString, convertStringToArray, allowed_file, tryconvert
 from app.main import bp
-from app.models import User, Post, Project, Address
-from app.service import GravatarXMLRPC
+from app.models import User, Post, Project, ProjectImage, Address, Link, Tag
+from app.service import *
 from datetime import datetime
-from flask import render_template, flash, redirect, url_for, request, jsonify, current_app, g
+from flask import render_template, flash, redirect, url_for, request, jsonify, current_app, g, session
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
+from werkzeug.utils import secure_filename
 from guess_language import guess_language
 from flask_googlemaps import GoogleMaps
 from flask_googlemaps import Map
+import geocoder
+import re
 
 @bp.before_request
 def before_request():
@@ -19,13 +22,39 @@ def before_request():
         db.session.commit()
         g.search_form = SearchForm()
 
+def get_tags_choices():
+    """
+    Loads all saved tags, and all tags currently mapped,
+    from session store.
+    """
+
+    # Would be something like this if fetching tags from the DB:
+    # tags_choices_all = [(str(o.id), o.title) for o in Tag.query
+    #     .all()]
+    # For session-storage example, is like this:
+    tags_choices_all = [(str(id), title)
+        for id, title in enumerate(session.get('tags', []))
+            if id]
+
+    # Would be something like this if fetching tags from the DB:
+    # tags_choices = [(str(o.id), o.title) for o in Tag.query
+    #         .join(Tag.posts)
+    #         .filter_by(id=post.id)
+    #         .all()]
+    # For session-storage example, is like this:
+    tags_choices = [(id, title)
+        for id, title in tags_choices_all
+            if int(id) in session.get('tag_map', [])]
+
+    return (tags_choices_all, tags_choices)
+
 @bp.route('/', methods=['GET', 'POST'])
 @bp.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
     form = PostForm()
     if form.validate_on_submit():
-        language = guess_language(form.post.data)
+        language = guess_language(form.body.data)
         if language == 'UNKNOWN' or len(language) > 5:
             language = ''
         post = Post(body=form.body.data, author=current_user, language=language)
@@ -41,48 +70,6 @@ def index():
         if posts.has_prev else None
     # projects = current_user.followed_projects().all()
     return render_template('index.html', title='Home', form=form, posts=posts.items, next_url=next_url, prev_num=prev_num)
-
-# @bp.route('edit_address/<address_id>', methods=['GET', 'POST'])
-# @login_required
-# def edit_project(project_id):
-#     address = Address.query.filter_by(id=address_id).first_or_404()
-#     form = EditAddressForm()
-#     if form.validate_on_submit():
-#         project.name = form.name.data
-#         project.headline = form.headline.data
-#         project.description = form.description.data
-#         project.completion_date = form.completion_date.data
-#         project.status = form.status.data
-#         project.tags = convertArrayToString(form.tags.data)
-#         address = Address.query.get(project.address_id)
-#         address.address1 = form.address1.data
-#         address.address2 = form.address2.data
-#         address.city = form.city.data
-#         address.state = form.state.data
-#         address.zipcode = form.zipcode.data
-#         address.country = form.country.data
-#         address.full_address =
-#         address.lat = form.lat.data
-#         address.lng = form.lng.data
-#         address.
-#         db.session.commit()
-#         flash('Your changes have been saved.')
-#         return redirect(url_for('project.project', project_id=project.id))
-#     elif request.method == 'GET':
-#         form.name.data = project.name
-#         form.headline.data = project.headline
-#         form.description.data = project.description
-#         form.completion_date.data = project.completion_date
-#         form.status.data = project.status
-#         form.address1.data = project.site.address1
-#         form.address2.data = project.site.address2
-#         form.city.data = project.site.city
-#         form.state.data = project.site.state
-#         form.zipcode.data = project.site.zipcode
-#         form.country.data = project.site.country
-#     return render_template('project/edit_project.html', title='Edit Project',
-#                            form=form)
-
 
 @bp.route('/search')
 @login_required
@@ -116,38 +103,56 @@ def reply_post():
     return jsonify({'text': '{{ wtf.quick_form(form) }}'})
 
 @bp.route('/upload', methods=['GET', 'POST'])
+@login_required
 def upload():
-    if request.method == 'POST' and 'photo' in request.files:
-        filename = photos.save(request.files['photo'])
-        return filename
+    aws = AWS_api()
+    user = User.query.filter_by(username=current_user.username).first()
+    if request.method == 'POST' and 'user_file' in request.files:
+        doc = request.files['user_file']
+        if doc.filename == '':
+            flash('No selected file.')
+            return redirect(url_for('main.upload'))
+        if doc and allowed_file(doc.filename):
+            doc.filename = secure_filename(doc.filename)
+            output = aws.upload_file_to_s3(doc, current_app.config['S3_BUCKET_NAME'])
+            flash('Your file, {}, has been uploaded to S3'.format(str(output)))
+            return redirect(url_for('main.index'))
+        # filename = photos.save(request.files['photo'])
+            # return filename
     return render_template('upload.html')
 
-@bp.route('/map', methods=['GET', 'POST'])
-def mapview():
-    # creating a map in the view
-    mymap = Map(
-        identifier="view-side",
-        lat=37.4419,
-        lng=-122.1419,
-        markers=[(37.4419, -122.1419)]
-    )
-    sndmap = Map(
-        identifier="sndmap",
-        lat=37.4419,
-        lng=-122.1419,
-        markers=[
-          {
-             'icon': 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
-             'lat': 37.4419,
-             'lng': -122.1419,
-             'infobox': "<b>Hello World</b>"
-          },
-          {
-             'icon': 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-             'lat': 37.4300,
-             'lng': -122.1400,
-             'infobox': "<b>Hello World from other place</b>"
-          }
-        ]
-    )
-    return render_template('example.html', mymap=mymap, sndmap=sndmap)
+@bp.route("/demo", methods=["GET", "POST"])
+def demo():
+    form = DemoForm(request.form)
+    if form.validate_on_submit():
+        current_app.logger.debug(form.data)
+    return render_template("demo.html", form=form)
+
+
+@bp.route("/tag")
+def tag():
+    form = TaggingForm(request.form)
+    # tags_choices_all, tags_choices = get_tags_choices()
+    # form.tags_field.choices = tags_choices_all
+    # form.tags_field.default = [id for id, title in tags_choices]
+    # form.tags_field.process(request.form)
+    # return render_template("example.html", form=form)
+    if form.validate_on_submit():
+        current_app.logger.debug(form.data)
+    return render_template("example.html", form=form)
+
+
+@bp.route("/save-tags/", methods=["POST"])
+def save_tags(asset):
+    form = TaggingForm(request.form)
+    tags_data_array = list(map(lambda v: tryconvert(v, v, int), convertStringToArray(form.tags.data)))
+
+    for element in tags_data_array:
+        exists = db.session.query(db.exists().where(Tag.id == element)).scalar()
+        if not exists:
+            # TODO: Defaulting category_id to 0; Either create a logic that can self categorize itself or create a process so that tags are created are automatically in a "bucket" category
+            tag = Tag(category_id=0, name=element)
+            db.session.add(tag)
+        asset.add_tag(tag)
+    db.session.commit()
+    # return redirect(url_for("main.tag"))

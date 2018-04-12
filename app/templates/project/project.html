@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% import 'bootstrap/wtf.html' as wtf %}
 
+{% block scripts %}
+    {{ super() }}
+    {% if mymap %}
+      {{mymap.js}}
+    {% endif %}
+{% endblock %}
+
 {% block app_content %}
     <table class="table table-hover">
         <tr>
@@ -10,6 +17,9 @@
                 {% if project.headline %}<p>{{ project.headline }}</p>{% endif %}
                 {% if project.completion_date %}
                 <p>Completed on: {{ moment(project.completion_date).format('LLL') }}</p>
+                {% endif %}
+                {% if project.tags %}
+                <p>Tags: {{ project.tags.all() }}</p>
                 {% endif %}
                 <p>Project Creator: {{ project.creator }}</p>
                 <p>Project Favorites: {{ project.admirer }}</p>
@@ -29,6 +39,9 @@
             </td>
         </tr>
     </table>
+    {% if mymap %}
+      {{mymap.html}}
+    {% endif %}
     {% if form %}
     {{ wtf.quick_form(form) }}
     <br>

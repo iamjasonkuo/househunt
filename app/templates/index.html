@@ -1,7 +1,17 @@
 {% extends "base.html" %}
 {% import 'bootstrap/wtf.html' as wtf %}
 
+{% block scripts %}
+    {{ super() }}
+    {% if mymap %}
+      {{mymap.js}}
+    {% endif %}
+{% endblock %}
+
 {% block app_content %}
+    {% if mymap %}
+      {{mymap.html}}
+    {% endif %}
     <h1>Hi, {{ current_user.username }}!</h1>
     {% if form %}
     {{ wtf.quick_form(form) }}

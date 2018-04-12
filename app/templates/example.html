@@ -1,31 +1,24 @@
-<!DOCTYPE html>
-    <html>
-    <head>
-            {{"decoupled-map"|googlemap_js(37.4419, -122.1419, markers=[(37.4419, -122.1419)])}}
-            {{mymap.js}}
-            {{sndmap.js}}
-    </head>
-    <body>
-        <h1>Flask Google Maps Example</h1>
+{% extends "base.html" %}
 
-        <h2> Template function centered, no marker </h2>
-        {{googlemap("simple-map", 37.4419, -122.1419)}}
+{% block app_content %}
 
-        <h2> Template filter decoupled with single marker </h2>
-        {{"decoupled-map"|googlemap_html(37.4419, -122.1419)}}
+<form action="{{ url_for('main.save_tags') }}" method="post">
+    {{ form.hidden_tag() }}
+    <div class="row">
+      <div class="col-md-4">
+        <div class="form-group">
+          {{ form.tags.label }}
+          <small class="text-muted">{{ form.tags.description }}</small>
+          {{ form.tags(class_="form-control") }}
 
-        <h2> Template function with multiple markers </h2>
-        {% with map=googlemap_obj("another-map", 37.4419, -122.1419, markers=[(37.4419, -122.1419), (37.4300, -122.1400)]) %}
-            {{map.html}}
-            {{map.js}}
-        {% endwith %}
+          {% for error in form.tags.errors %}
+          <span class="label label-danger">{{ error }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {{ form.submit(class_="btn btn-primary") }}
+</form>
 
-        <h2> First map generated in view</h2>
-        {{mymap.html}}
 
-        <h2> Second map generated in view</h2>
-        <h3> Example for different icons in multiple markers with infoboxes</h3>
-        {{sndmap.html}}
-
-    </body>
-</html>
+{% endblock %}

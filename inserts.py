@@ -1,0 +1,25 @@
+from app import db
+from app.models import User, Post, Project, ProjectImage, Address, Link, Tag
+
+
+db.session.add(Tag(category_id=1, name='Retail'))
+db.session.add(Tag(category_id=1, name='Commercial'))
+db.session.add(Tag(category_id=1, name='Office'))
+db.session.add(Tag(category_id=1, name='Residential'))
+db.session.add(Tag(category_id=2, name='Single Family Residence'))
+db.session.add(Tag(category_id=2, name='Duplex'))
+db.session.add(Tag(category_id=2, name='Multifamily'))
+db.session.add(Tag(category_id=2, name='Townhouse'))
+db.session.add(Tag(category_id=2, name='Condominium'))
+db.session.add(Tag(category_id=2, name='Apartment'))
+db.session.add(Tag(category_id=2, name='Studio'))
+db.session.add(Tag(category_id=3, name='Low Rise (Garden)'))
+db.session.add(Tag(category_id=3, name='Mid Rise'))
+db.session.add(Tag(category_id=3, name='High Rise'))
+db.session.add(Tag(category_id=3, name='Dormitory'))
+db.session.add(Tag(category_id=3, name='Manufactured'))
+db.session.add(Tag(category_id=4, name='Landscape'))
+db.session.add(Tag(category_id=4, name='Interior'))
+db.session.add(Tag(category_id=4, name='Exterior'))
+db.session.commit()
+db.session.close()

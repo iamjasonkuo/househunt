@@ -1,8 +1,13 @@
 {% extends 'bootstrap/base.html' %}
 {% import 'bootstrap/wtf.html' as wtf %}
 
+{% block head %}
+    {{ super() }}
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
 {% block title %}
-    {% if title %}{{ title }} - Househunt{% else %}Welcome to Househunt{% endif %}
+{% if title %}{{ title }} - Househunt{% else %}{% endif %}
 {% endblock %}
 
 {% block navbar %}
@@ -36,8 +41,18 @@
                     {% if current_user.is_anonymous %}
                     <li><a href="{{ url_for('auth.login') }}">Login</a></li>
                     {% else %}
-                    <li><a href="{{ url_for('user.user', username=current_user.username) }}">Profile</a></li>
-                    <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+                    <li class="dropdown">
+                      <a class="dropdown-toggle" data-toggle="dropdown">
+                        <img style="border-radius: 50%;-moz-border-radius: 50%;-webkit-border-radius: 50%;" src="{{ current_user.avatar(25) }}">
+                        {{ current_user.username }} <strong class="caret"></strong>
+                      </a>
+                      <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('user.user', username=current_user.username) }}">Profile</a></li>
+                        <li><a href="#">Settings</a></li>
+                        <li class="divider"></li>
+                        <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+                      </ul>
+                    </li>
                     {% endif %}
                 </ul>
             </div>
@@ -63,6 +78,66 @@
 {% block scripts %}
     {{ super() }}
     {{ moment.include_moment() }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+    <script type="text/javascript">
+    $(document).ready(function() {
+        // https://select2.github.io/examples.html
+        // https://gist.github.com/imwilsonxu/1e7343426135b4a34ce78574012a8f62
+        $("select").select2({});
+        function formatRepo (repo) {
+            if (repo.loading) return repo.text;
+            var markup = "<div class='select2-result-repository clearfix'>" +
+            "<div class='select2-result-repository__avatar'><img src='" + repo.owner.avatar_url + "' /></div>" +
+            "<div class='select2-result-repository__meta'>" +
+            "<div class='select2-result-repository__title'>" + repo.full_name + "</div>";
+
+            if (repo.description) {
+                markup += "<div class='select2-result-repository__description'>" + repo.description + "</div>";
+            }
+            markup += "<div class='select2-result-repository__statistics'>" +
+            "<div class='select2-result-repository__forks'><i class='fa fa-flash'></i> " + repo.forks_count + " Forks</div>" +
+            "<div class='select2-result-repository__stargazers'><i class='fa fa-star'></i> " + repo.stargazers_count + " Stars</div>" +
+            "<div class='select2-result-repository__watchers'><i class='fa fa-eye'></i> " + repo.watchers_count + " Watchers</div>" +
+            "</div>" +
+            "</div></div>";
+            return markup;
+        }
+        function formatRepoSelection (repo) {
+            return repo.full_name || repo.text;
+        }
+        $("#single_dynamic_select").select2({
+            ajax: {
+                url: "https://api.github.com/search/repositories",
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        q: params.term, // search term
+                        page: params.page
+                    };
+                },
+                processResults: function (data, params) {
+                    // parse the results into the format expected by Select2
+                    // since we are using custom formatting functions we do not need to
+                    // alter the remote JSON data, except to indicate that infinite
+                    // scrolling can be used
+                    params.page = params.page || 1;
+                    return {
+                        results: data.items,
+                        pagination: {
+                            more: (params.page * 30) < data.total_count
+                        }
+                    };
+                },
+                cache: true
+            },
+            escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
+            minimumInputLength: 1,
+            templateResult: formatRepo, // omitted for brevity, see the source of this page
+            templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
+        });
+    });
+    </script>
     <script>
       form = $('form').html().trim()
 
@@ -78,20 +153,6 @@
                 $(destElem).text("{{ 'Error: Could not contact server.' }}");
             });
         }
-
-        // function reply(sourceElem, destElem) {
-        //   $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
-        //   $.post('/reply', {
-        //     parent_post_id: $(sourceElem).attr('id')
-        //     parent_post_body: $(sourceElem).text()
-        //   }).done(function(response) {
-        //     print('it worked')
-        //     $(destElem).text(response)
-        //   }).fail(function() {
-        //     print('it failed')
-        //     $(destElem).text("{{ 'Error' }}")
-        //   });
-        // }
 
         function test(destElem, parent_post_id) {
             original_elem = $(destElem).html()

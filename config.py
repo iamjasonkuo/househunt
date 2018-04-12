@@ -21,3 +21,9 @@ class Config(object):
     ZWSID = os.environ.get('ZWSID')
     GOOGLEMAPS_KEY = os.environ.get('GOOGLEMAPS_KEY')
     GOOGLEMAPS_GEOCODING_KEY = os.environ.get('GOOGLEMAPS_GEOCODING_KEY')
+    S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME')
+    S3_ACCESS_KEY = os.environ.get('S3_ACCESS_KEY')
+    S3_SECRET_ACCESS_KEY = os.environ.get('S3_SECRET_ACCESS_KEY')
+    S3_LOCATION = 'http://{}.s3.amazonaws.com/'.format(S3_BUCKET_NAME)
+    DEBUG = True
+    PORT = 5000

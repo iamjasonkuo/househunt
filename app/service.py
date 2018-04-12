@@ -2,8 +2,10 @@ import base64
 import json
 import requests
 import xmltodict
+import boto3, botocore
 
 from flask import current_app
+from app.helper import Place, Error, prepFullAddressSearch
 from xmlrpc.client import ServerProxy, Fault
 from hashlib import md5
 from queue import Queue
@@ -20,17 +22,58 @@ except ImportError:
   from urllib import urlencode
   from urllib import __version__ as urllib_version
 
+class AWS_api(object):
+
+    def __init__(self):
+        if 'S3_ACCESS_KEY' not in current_app.config or \
+            not current_app.config['S3_ACCESS_KEY']:
+                return 'Error: the AWS S3_ACCESS_KEY is not configured.'
+        self.base_url = "http://{}.s3.amazonaws.com/".format(current_app.config['S3_BUCKET_NAME'])
+        self._input_encoding = None
+        self._request_headers=None
+        self.__auth = None
+        self._timeout = None
+        self.s3 = boto3.client(
+            "s3",
+            aws_access_key_id=current_app.config['S3_ACCESS_KEY'],
+            aws_secret_access_key=current_app.config['S3_SECRET_ACCESS_KEY']
+            )
+
+    def upload_file_to_s3(self, file, bucket_name, acl="public-read"):
+        try:
+            self.s3.upload_fileobj(
+                file,
+                bucket_name,
+                file.filename,
+                ExtraArgs={
+                    "ACL": acl,
+                    "ContentType": file.content_type
+                }
+            )
+        except Exception as e:
+            print("Something Happened: ", e)
+            return e
+        return "{}{}".format(current_app.config["S3_LOCATION"], file.filename)
+
+
 class GoogleMaps_api(object):
     def __init__(self):
         if 'GOOGLEMAPS_KEY' not in current_app.config or \
-            not current_app.config['GOOGLEMAPS_KEY']:
-                return 'Error: the google maps GOOGLEMAPS_KEY is not configured.'
+                not current_app.config['GOOGLEMAPS_KEY']:
+            return 'Error: the google maps GOOGLEMAPS_KEY is not configured.'
 
         if 'GOOGLEMAPS_GEOCODING_KEY' not in current_app.config or \
-            not current_app.config['GOOGLEMAPS_GEOCODING_KEY']:
-                return 'Error: the google maps GOOGLEMAPS_GEOCODING_KEY is not configured.'
+                not current_app.config['GOOGLEMAPS_GEOCODING_KEY']:
+            return 'Error: the google maps GOOGLEMAPS_GEOCODING_KEY is not configured.'
+
+        self.base_url = "https://maps.googleapis.com/maps/api"
+        self._input_encoding = None
+        self._request_headers=None
+        self.__auth = None
+        self._timeout = None
 
     def getGeocode(self, address, city, state):
+        principal_place = prepFullAddressSearch(address, city, state)
         address = address.replace(' ', '+')
         city = city.replace(' ', '+')
         key = current_app.config['GOOGLEMAPS_GEOCODING_KEY']
@@ -38,7 +81,16 @@ class GoogleMaps_api(object):
         r = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address={},+{},+{}&key={}'.format(address, city, state, key))
         if r.status_code != 200:
             return 'Error: the geocoding service failed.'
-        return json.loads(r.content.decode('utf-8-sig'))
+        #TODO: If zero results then return raise error
+        parsed = json.loads(r.content.decode('utf-8-sig'))
+        print(json.dumps(parsed, indent=4, sort_keys=True))
+        #TODO: Refactor and clean up data acquisition
+        output = {
+            'principal': principal_place,
+            'lat': parsed['results'][0]['geometry']['location']['lat'],
+            'lng': parsed['results'][0]['geometry']['location']['lng']
+        }
+        return output
 
 
 class Zillow_api(object):

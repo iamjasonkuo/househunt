@@ -3,11 +3,20 @@ from hashlib import md5
 from time import time
 from flask import current_app
 from flask_login import UserMixin
-from sqlalchemy.ext.associationproxy import association_proxy
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-from app import db, login
+from app import db, login, admin
 from app.search import add_to_index, remove_from_index, query_index
+from flask_admin.contrib.sqla import ModelView, filters
+from wtforms import validators
+
+
+# from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.event import listens_for
+# from sqlalchemy.pool import Pool
+
+Base = declarative_base()
 
 class SearchableMixin(object):
     @classmethod
@@ -44,7 +53,6 @@ class SearchableMixin(object):
         for obj in cls.query:
             add_to_index(cls.__tablename__, obj)
 
-
 ###Followers
 followers = db.Table('followers',
     db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
@@ -71,14 +79,25 @@ project_contributors = db.Table('project_contributors',
     db.Column('project_id', db.Integer, db.ForeignKey('project.id'))
     )
 
-# ###Replies
-# post_replies = db.Table('post_replies',
-#     db.Column('replier', db.Integer, db.ForeignKey('post.id')),
-#     db.Column('post_id', db.Integer, db.ForeignKey('post.id')),
-#     )
+###Project Tags
+project_tags = db.Table('project_tags',
+    db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'))
+    )
 
+###ProjectImage Tags
+projectimage_tags = db.Table('projectimage_tags',
+    db.Column('projectimage_id', db.Integer, db.ForeignKey('projectimage.id')),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'))
+    )
 
-class User(SearchableMixin, UserMixin, db.Model):
+class CommonColumns(Base):
+    __abstract__ = True
+    _created = db.Column(db.DateTime, default=datetime.utcnow)
+    _updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    _etag = db.Column(db.String(40))
+
+class User(SearchableMixin, UserMixin, db.Model, CommonColumns):
     __tablename__ = 'user'
     __searchable__ = ['username']
     id = db.Column(db.Integer, primary_key=True)
@@ -88,19 +107,16 @@ class User(SearchableMixin, UserMixin, db.Model):
     about_me = db.Column(db.String(140))
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    occupation = db.Column(db.String(120))
+    headline = db.Column(db.String(120))
     first_name = db.Column(db.String(120))
     middle_name = db.Column(db.String(120))
     last_name = db.Column(db.String(120))
     flagged_user = db.Column(db.Integer)
-    account_access = db.Column(db.Integer)
-
+    account_access = db.Column(db.Integer) #Boolean
     posts = db.relationship('Post', backref='author', lazy='dynamic') #1:M
     projects = db.relationship('Project', backref='creator', lazy='dynamic') #1:M
-    flagged_projects = db.relationship('ProjectFlagged', back_populates='flagger') #1:M association class object
-
     favorites = db.relationship('Project', secondary=project_favorites, backref='admirer', lazy='dynamic') #M:M
-    contributes = db.relationship('Project', secondary=project_contributors, backref='contributor', lazy='dynamic') #M:M
+    contributes = db.relationship('Project', secondary=project_contributors, backref='contributor', lazy='dynamic') #TODO: May need to refactor to include what type of contributor. Convert into association object? M:M
     followed = db.relationship(
         'User', secondary=followers,
         primaryjoin=(followers.c.follower_id == id),
@@ -182,7 +198,8 @@ class User(SearchableMixin, UserMixin, db.Model):
 def load_user(id):
     return User.query.get(int(id))
 
-class Post(SearchableMixin, db.Model):
+
+class Post(SearchableMixin, db.Model, CommonColumns):
     __searchable__ = ['body']
     __tablename__ = 'post'
     id = db.Column(db.Integer, primary_key=True)
@@ -200,70 +217,86 @@ class Post(SearchableMixin, db.Model):
         return self.project_id != None
 
 
-class Project(db.Model):
+class Project(db.Model, CommonColumns):
     __tablename__ = 'project'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(30))
     headline = db.Column(db.String(30))
     description = db.Column(db.String(500))
+    context_description = db.Column(db.String)
+    objective_description = db.Column(db.String)
+    performance_description = db.Column(db.String)
     completion_date = db.Column(db.DateTime)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.Integer)
-    tags = db.Column(db.String(120))
     beds = db.Column(db.Integer)
     baths = db.Column(db.Integer)
     sqft = db.Column(db.Integer)
     lotsqft = db.Column(db.Integer)
-    build_type = db.Column(db.String(50))
-    property_type = db.Column(db.String(50))
     num_units = db.Column(db.Integer)
-    year_built = db.Column(db.Integer)
     year_renovated = db.Column(db.Integer)
-
     address_id = db.Column(db.Integer, db.ForeignKey('address.id')) ##M:1 Address backref: Site
     user_id = db.Column(db.Integer, db.ForeignKey('user.id')) ##M:1 User backref: creator & admirer
     links = db.relationship('Link', backref='link_project', lazy='dynamic') ##1:M
     posts = db.relationship('Post', backref='post_project', lazy='dynamic') ##1:M
     images = db.relationship('ProjectImage', backref='image_project', lazy='dynamic') ##1:M
-
-    flaggers = db.relationship('ProjectFlagged', back_populates='project') ##M:M class association object
+    tags = db.relationship('Tag', secondary=project_tags, backref='tag_project', lazy='dynamic') #1:M
     similar = db.relationship(
         'Project', secondary=similar_projects,
         primaryjoin=(similar_projects.c.project_id == id),
         secondaryjoin=(similar_projects.c.similar_project_id == id),
         backref=db.backref('similar_project', lazy='dynamic'), lazy='dynamic') ##M:M
 
-    def __repr__(self):
-        return '<Project {}>'.format(self.name)
+    def add_tag(self, tag):
+        self.tags.append(tag)
 
-    def queue_comparable(self, project):
-        if not self.is_similar(project):
-            self.similar_projects.append(project)
+    def remove_tag(self, tag):
+        self.tags.remove(tag)
 
-    def dequeue_comparable(self, project):
-        if self.is_similar(project):
-            self.similar_projects.remove(project)
+    def get_project_tags(self, project):
+        return self.tags.filter(project_tags.c.project_id == project.id)
 
-    def is_similar(self, project):
-        return self.similar_projects.filter(
-            followers.c.followed_id == project.id).count() > 0
+    def add_image(self, image):
+        self.images.append(image)
+
+    def remove_image(self, image):
+        self.images.remove(image)
+
+    def add_link(self, link):
+        self.links.append(link)
+
+    def remove_link(self, link):
+        self.links.remove(link)
 
     def add_post(self, post):
-        self.followed.append(post)
+        self.posts.append(post)
 
     def remove_post(self, post):
-        self.followed.remove(post)
+        self.posts.remove(post)
 
-class ProjectImage(db.Model):
+class ProjectImage(db.Model, CommonColumns):
     __tablename__ = 'projectimage'
     id = db.Column(db.Integer, primary_key=True)
     image_feature = db.Column(db.Integer) ##Boolean
-    image_url = db.Column(db.String(120))
-    tags = db.Column(db.String(120))
+    image_url = db.Column(db.String)
+    description = db.Column(db.String(120))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id')) ##M:1 Project image_project
+    tags = db.relationship('Tag', secondary=projectimage_tags, backref='tagged_image', lazy='dynamic')
 
-class Address(SearchableMixin, db.Model):
+    def __repr__(self):
+        return '<ProjectImage {}>'.format(self.image_url)
+
+    def add_tag(self, tag):
+        self.tags.append(tag)
+
+    def remove_tag(self, tag):
+        self.tags.remove(tag)
+
+    def get_project_tags(self, project):
+        return self.tags.filter(project_tags.c.project_id == project.id)
+
+class Address(SearchableMixin, db.Model, CommonColumns):
     __searchable__ = ['full_address']
     __tablename__ = 'address'
     id = db.Column(db.Integer, primary_key=True)
@@ -282,30 +315,40 @@ class Address(SearchableMixin, db.Model):
     def __repr__(self):
         return '<Address {}>'.format(self.full_address)
 
-class Link(db.Model):
+    def add_project(self, project):
+        self.projects.append(project)
+
+    def remove_project(self, project):
+        self.projects.remove(project)
+
+class Link(db.Model, CommonColumns):
     __tablename__ = 'link'
     id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(120))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id')) ##M:1 Project link_project
 
-#######ASSOCIATION OBJECT############
-class ProjectFlagged(db.Model):
-    __tablename__ = 'projectflagged'
-    flagger_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True) ##Reporter
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), primary_key=True)
-    flag_reason = db.Column(db.String(256))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    flagger = db.relationship('User', back_populates='flagged_projects')
-    project = db.relationship('Project', back_populates='flaggers')
+    def __repr__(self):
+        return '<Link {}>'.format(self.url)
 
-class ProjectContributor(db.Model):
-    __tablename__ = 'projectcontributor'
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), primary_key=True)
-    verified = db.Column(db.Integer) ##Boolean
-    project = db.relationship('Project', backref='contributor_associations')
-    user = db.relationship('User', backref='project_associations')
+class Tag(db.Model, CommonColumns):
+    __tablename__ = 'tag'
+    id = db.Column(db.Integer, primary_key=True)
+    category_id = db.Column(db.Integer)
+    name = db.Column(db.String(30))
+
+    def __repr__(self):
+        return '<Tag {}>'.format(self.name)
+
+    @staticmethod
+    def get_all_tags():
+        try:
+            tag_list = [(value.id, value.name) for value in db.session.query(Tag).distinct()]
+        except:
+            return
+        return tag_list
+
+
 
 
 ##Listening for ElasticSearch
@@ -315,3 +358,13 @@ db.event.listen(db.session, 'after_commit', Post.after_commit)
 # db.event.listen(db.session, 'after_commit', User.after_commit)
 # db.event.listen(db.session, 'before_commit', Address.before_commit)
 # db.event.listen(db.session, 'after_commit', Address.after_commit)
+
+
+##TODO: Enhance Admin view: http://examples.flask-admin.org/
+admin.add_view(ModelView(User, db.session, endpoint='test1'))
+admin.add_view(ModelView(Post, db.session, endpoint='test2'))
+admin.add_view(ModelView(Project, db.session, endpoint='test3'))
+admin.add_view(ModelView(ProjectImage, db.session, endpoint='test4'))
+admin.add_view(ModelView(Address, db.session, endpoint='test5'))
+admin.add_view(ModelView(Link, db.session, endpoint='test6'))
+admin.add_view(ModelView(Tag, db.session, endpoint='test7'))

@@ -10,6 +10,9 @@ from flask_mail import Mail
 from flask_migrate import Migrate
 from flask_moment import Moment
 from flask_uploads import UploadSet, configure_uploads, IMAGES
+from flask_assets import Bundle, Environment
+from flask_admin import Admin
+from flask_admin.contrib.sqla import ModelView
 from config import Config
 from elasticsearch import Elasticsearch
 
@@ -24,6 +27,8 @@ login.login_view = 'auth.login'
 login.login_message = 'Please log in to access this page.'
 mail = Mail(app)
 moment = Moment(app)
+assets = Environment(app)
+admin = Admin(app, template_mode='bootstrap3')
 googlemaps = GoogleMaps(app)
 photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
@@ -38,6 +43,8 @@ def create_app(config_class=Config):
     mail.init_app(app)
     bootstrap.init_app(app)
     moment.init_app(app)
+    assets.init_app(app)
+    admin.init_app(app)
     googlemaps.init_app(app)
 
     app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']]) \

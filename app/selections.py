@@ -1,3 +1,6 @@
+from app import db
+from app.models import Tag
+
 countries = [
     ('US', 'United States'),
     ('AF', 'Afghanistan'),
@@ -292,32 +295,24 @@ states = [
         ('WY', 'Wyoming')
 ]
 
-tags = [
-    ('Retail', 'Retail'),
-    ('Commercial', 'Commercial'),
-    ('Office', 'Office'),
-    ('Residential', 'Residential')
-]
 
-statuses = [
-    ('In Progress', 'In Progress'),
-    ('Completed', 'Completed')
-]
+tags = Tag.get_all_tags()
 
-property_types = [
-    ('Single Family Residence', 'Single Family Residence'),
-    ('Duplex', 'Duplex'),
-    ('Multifamily', 'Multifamily'),
-    ('Townhouse', 'Townhouse'),
-    ('Condominium', 'Condominium'),
-    ('Apartment', 'Apartment'),
-    ('Studio', 'Studio')
-]#sfr, duplex, multiplex
-
-build_types = [
-    ('Low Rise (Garden)', 'Low Rise (Garden)'),
-    ('Mid Rise', 'Mid Rise'),
-    ('High Rise', 'High Rise'),
-    ('Dormitory', 'Dormitory'),
-    ('Manufactured', 'Manufactured')
-]
+#
+# property_types = [
+#     ('Single Family Residence', 'Single Family Residence'),
+#     ('Duplex', 'Duplex'),
+#     ('Multifamily', 'Multifamily'),
+#     ('Townhouse', 'Townhouse'),
+#     ('Condominium', 'Condominium'),
+#     ('Apartment', 'Apartment'),
+#     ('Studio', 'Studio')
+# ]#sfr, duplex, multiplex
+#
+# build_types = [
+#     ('Low Rise (Garden)', 'Low Rise (Garden)'),
+#     ('Mid Rise', 'Mid Rise'),
+#     ('High Rise', 'High Rise'),
+#     ('Dormitory', 'Dormitory'),
+#     ('Manufactured', 'Manufactured')
+# ]

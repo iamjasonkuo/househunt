@@ -4,13 +4,13 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
     Length, Optional
-from app.helper import clean_list, normalize
+from app.helper import clean_list, normalize, Select2MultipleField
 from app.models import User, Project, Address
-from app.selections import countries, states, tags, statuses, build_types, property_types
+from app.selections import countries, states, tags, tags
 
 class ProjectCreateInitialForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
-    tags = SelectMultipleField('Tags', choices=tags)
+    tags = Select2MultipleField('Tags', choices=tags, description=u"tags description goes here", render_kw={"multiple": "multiple", "data-tags": "1"})
     address1 = StringField('Address 1', validators=[DataRequired()])
     address2 = StringField('Address 2', validators=[Optional()])
     city = StringField('City', validators=[DataRequired()])
@@ -24,7 +24,6 @@ class EditProjectForm(FlaskForm):
     headline = StringField('Headline', validators=[Optional()])
     description = TextAreaField('Project Description', validators=[Length(min=0, max=140)])
     completion_date = DateField('Completion Date', validators=[Optional()])
-    status = SelectField('Status', choices=statuses)
     tags = SelectMultipleField('Tags', choices=tags)
     address1 = StringField('Address 1', validators=[DataRequired()])
     address2 = StringField('Address 2', validators=[Optional()])
@@ -51,8 +50,8 @@ class ProjectFilterForm(FlaskForm):
     sqft_max = IntegerField('Sqft Max', validators=[DataRequired()])
     lotsqft_min = IntegerField('Lot Sqft Min', validators=[DataRequired()])
     lotsqft_max = IntegerField('Lot Sqft Max', validators=[DataRequired()])
-    build_type = SelectField('Build Type', choices=build_types)
-    property_type = SelectField('Property Type', choices=property_types)
+    build_type = SelectField('Build Type', choices=tags)
+    property_type = SelectField('Property Type', choices=tags)
     num_units = IntegerField('Lot Sqft Max', validators=[DataRequired()])
     year_built_min = IntegerField('Lot Sqft Max', validators=[DataRequired()])
     year_built_max = IntegerField('Lot Sqft Max', validators=[DataRequired()])

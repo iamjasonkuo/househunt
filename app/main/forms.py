@@ -5,9 +5,9 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
     Length, Optional
-from app.helper import clean_list, normalize
+from app.helper import clean_list, normalize, Select2MultipleField
 from app.models import User, Project, Address
-from app.selections import countries, states, tags, statuses, build_types, property_types
+from app.selections import countries, states, tags
 
 
 class PostForm(FlaskForm):
@@ -27,7 +27,7 @@ class SearchForm(FlaskForm):
 
 class FeedFilterForm(FlaskForm):
     city = StringField('City', validators=[DataRequired()])
-    property_type = SelectMultipleField('Property Type', choices=property_types)
+    property_type = SelectMultipleField('Property Type', choices=tags)
 
 class EditAddressForm(FlaskForm):
     address1 = StringField('Address 1', validators=[DataRequired()])
@@ -40,3 +40,29 @@ class EditAddressForm(FlaskForm):
     full_address = address2 = StringField('Full Address', validators=[Optional()])
     lat = FloatField('Latitude', validators=[Optional()])
     lng = FloatField('Longitude', validators=[Optional()])
+
+class TaggingForm(FlaskForm):
+    tags = Select2MultipleField(u'Tags', [],
+            choices=tags,
+            description=u"tags description goes here",
+            render_kw={"multiple": "multiple", "data-tags": "1"})
+    submit = SubmitField()
+
+class DemoForm(FlaskForm):
+    single_select = SelectField(u"单选", [DataRequired()],
+            choices=[("py", "python"), ("rb", "ruby"), ("js", "javascript")],
+            description=u"有限选项。无效化。",
+            render_kw={"disabled": "true"})
+    single_dynamic_select = SelectField(u"单选", [DataRequired()],
+            choices=[("0", "")],
+            description=u"动态加载选项。",
+            render_kw={})
+    multi_select = Select2MultipleField(u"选择框", [],
+            choices=[("py", "python"), ("rb", "ruby"), ("js", "javascript")],
+            description=u"多选。有限选项。",
+            render_kw={"multiple": "multiple"})
+    tags = Select2MultipleField(u'标签', [],
+            choices=[("py", "python"), ("rb", "ruby"), ("js", "javascript")],
+            description=u"多选。无限选项。",
+            render_kw={"multiple": "multiple", "data-tags": "1"})
+    submit = SubmitField()

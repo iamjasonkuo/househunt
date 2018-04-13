@@ -19,10 +19,10 @@
             in <a href="{{ url_for('project.project', project_id=post.post_project.id) }}"> {{ post.post_project.name }} </a>
             {% endif %}:
             <br>
-            <span id="post{{ post.id }}">{{ post.body }}</span>
+            <span id="post{{ post.path }}">{{ post.body }}</span>
             <br><br>
-            <span id="reply{{ post.id }}">
-            <a href="javascript:test(reply{{ post.id }}, {{post.id}});">{{ 'Reply' }}</a>
+            <span id="replybtn{{ post.path }}">
+            <a href="javascript:replyForm(replybtn{{ post.path }});">{{ 'Reply' }}</a>
             </span>
         </td>
     </tr>

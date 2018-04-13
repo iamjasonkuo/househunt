@@ -167,7 +167,7 @@ class User(SearchableMixin, UserMixin, db.Model, CommonColumns):
             followers, (followers.c.followed_id == Post.user_id)).filter(
                 followers.c.follower_id == self.id)
         own = Post.query.filter_by(user_id=self.id)
-        return followed.union(own).order_by(Post.timestamp.desc())
+        return followed.union(own).order_by(Post.path)
 
     def favorite(self, project):
         if not self.is_favorited(project):
@@ -202,19 +202,31 @@ def load_user(id):
 class Post(SearchableMixin, db.Model, CommonColumns):
     __searchable__ = ['body']
     __tablename__ = 'post'
+    _N = 6
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.String(140))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     language = db.Column(db.String(5))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id')) ##M:1 User backref: author
     project_id = db.Column(db.Integer, db.ForeignKey('project.id')) ##M:1 Project backref: post_project
-    parent_post_id = db.Column(db.Integer)
+    parent_id = db.Column(db.Integer, db.ForeignKey('post.id')) ##M:! Post backref: parent
+    path = db.Column(db.Text, index=True)
+    replies = db.relationship(
+        'Post', backref=db.backref('parent', remote_side=[id]),
+        lazy='dynamic')
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
 
-    def is_review(self):
-        return self.project_id != None
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+        prefix = self.parent.path + '.' if self.parent else ''
+        self.path = prefix + '{:0{}d}'.format(self.id, self._N)
+        db.session.commit()
+
+    def level(self):
+        return len(self.path) // self._N - 1
 
 
 class Project(db.Model, CommonColumns):

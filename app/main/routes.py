@@ -22,32 +22,6 @@ def before_request():
         db.session.commit()
         g.search_form = SearchForm()
 
-def get_tags_choices():
-    """
-    Loads all saved tags, and all tags currently mapped,
-    from session store.
-    """
-
-    # Would be something like this if fetching tags from the DB:
-    # tags_choices_all = [(str(o.id), o.title) for o in Tag.query
-    #     .all()]
-    # For session-storage example, is like this:
-    tags_choices_all = [(str(id), title)
-        for id, title in enumerate(session.get('tags', []))
-            if id]
-
-    # Would be something like this if fetching tags from the DB:
-    # tags_choices = [(str(o.id), o.title) for o in Tag.query
-    #         .join(Tag.posts)
-    #         .filter_by(id=post.id)
-    #         .all()]
-    # For session-storage example, is like this:
-    tags_choices = [(id, title)
-        for id, title in tags_choices_all
-            if int(id) in session.get('tag_map', [])]
-
-    return (tags_choices_all, tags_choices)
-
 @bp.route('/', methods=['GET', 'POST'])
 @bp.route('/index', methods=['GET', 'POST'])
 @login_required
@@ -58,8 +32,7 @@ def index():
         if language == 'UNKNOWN' or len(language) > 5:
             language = ''
         post = Post(body=form.body.data, author=current_user, language=language)
-        db.session.add(post)
-        db.session.commit()
+        post.save()
         flash('Your post is now live!')
         return redirect(url_for('main.index'))
     page = request.args.get('page', 1, type=int)
@@ -84,23 +57,39 @@ def search():
         if page > 1 else None
     return render_template('search.html', title='Search', posts=posts, next_url=next_url, prev_url=prev_url)
 
-@bp.route('/search/address')
-@login_required
-def search_address():
-    if not g.search_form.validate():
-        return redirect(url_for('main.index'))
-    page = request.args.get('page', 1, type=int)
-    addresses, total = Address.search(g.search_form.q.data, page, current_app.config['POSTS_PER_PAGE'])
-    next_url = url_for('main.search', q=g.search_form.q.data, page=page + 1) \
-        if total > page * current_app.config['POSTS_PER_PAGE'] else None
-    prev_url = url_for('main.search', q=g.search_form.q.data, page=page - 1) \
-        if page > 1 else None
-    return render_template('search.html', title='Search', addresses=addresses, next_url=next_url, prev_url=prev_url)
+# @bp.route('/search/address')
+# @login_required
+# def search_address():
+#     if not g.search_form.validate():
+#         return redirect(url_for('main.index'))
+#     page = request.args.get('page', 1, type=int)
+#     addresses, total = Address.search(g.search_form.q.data, page, current_app.config['POSTS_PER_PAGE'])
+#     next_url = url_for('main.search', q=g.search_form.q.data, page=page + 1) \
+#         if total > page * current_app.config['POSTS_PER_PAGE'] else None
+#     prev_url = url_for('main.search', q=g.search_form.q.data, page=page - 1) \
+#         if page > 1 else None
+#     return render_template('search.html', title='Search', addresses=addresses, next_url=next_url, prev_url=prev_url)
 
-@bp.route('/reply', methods=['GET'])
+@bp.route('/reply-form', methods=['POST'])
+@login_required
+def reply_form():
+    form = PostForm()
+    form.parent_id.data = request.form['parent_id']
+    return render_template('_comment.html', form=form)
+
+@bp.route('/reply-post', methods=['POST'])
 @login_required
 def reply_post():
-    return jsonify({'text': '{{ wtf.quick_form(form) }}'})
+    print('INSIDE REPLY_POST')
+    form = PostForm(request.form)
+    language = guess_language(form.body.data)
+    if language == 'UNKNOWN' or len(language) > 5:
+        language = ''
+    parent = Post.query.filter_by(path=form.parent_id.data).first()
+    post = Post(body=form.body.data, parent=parent, author=current_user, language=language)
+    post.save()
+    flash('Your post is now live!')
+    return redirect(url_for('main.index'))
 
 @bp.route('/upload', methods=['GET', 'POST'])
 @login_required
@@ -121,6 +110,23 @@ def upload():
             # return filename
     return render_template('upload.html')
 
+
+@bp.route('/save-tags/', methods=['POST'])
+def save_tags(asset):
+    form = TaggingForm(request.form)
+    tags_data_array = list(map(lambda v: tryconvert(v, v, int), convertStringToArray(form.tags.data)))
+
+    for element in tags_data_array:
+        exists = db.session.query(db.exists().where(Tag.id == element)).scalar()
+        if not exists:
+            # TODO: Defaulting category_id to 0; Either create a logic that can self categorize itself or create a process so that tags are created are automatically in a "bucket" category
+            tag = Tag(category_id=0, name=element)
+            db.session.add(tag)
+        asset.add_tag(tag)
+    db.session.commit()
+    # return redirect(url_for("main.tag"))
+
+
 @bp.route("/demo", methods=["GET", "POST"])
 def demo():
     form = DemoForm(request.form)
@@ -140,19 +146,3 @@ def tag():
     if form.validate_on_submit():
         current_app.logger.debug(form.data)
     return render_template("example.html", form=form)
-
-
-@bp.route("/save-tags/", methods=["POST"])
-def save_tags(asset):
-    form = TaggingForm(request.form)
-    tags_data_array = list(map(lambda v: tryconvert(v, v, int), convertStringToArray(form.tags.data)))
-
-    for element in tags_data_array:
-        exists = db.session.query(db.exists().where(Tag.id == element)).scalar()
-        if not exists:
-            # TODO: Defaulting category_id to 0; Either create a logic that can self categorize itself or create a process so that tags are created are automatically in a "bucket" category
-            tag = Tag(category_id=0, name=element)
-            db.session.add(tag)
-        asset.add_tag(tag)
-    db.session.commit()
-    # return redirect(url_for("main.tag"))

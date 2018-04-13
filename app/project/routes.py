@@ -112,8 +112,7 @@ def project(project_id):
             language = ''
         project = Project.query.filter_by(id=project_id).first_or_404()
         post = Post(body=form.body.data, author=current_user, post_project=project, language=language)
-        db.session.add(post)
-        db.session.commit()
+        post.save()
         flash('Your post is now live!')
         return redirect(url_for('project.project', project_id=project_id))
     page = request.args.get('page', 1, type=int)

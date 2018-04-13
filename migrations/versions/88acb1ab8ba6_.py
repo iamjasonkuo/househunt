@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 308e36426826
+Revision ID: 88acb1ab8ba6
 Revises: 
-Create Date: 2018-04-12 10:44:16.708332
+Create Date: 2018-04-12 18:39:16.635832
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '308e36426826'
+revision = '88acb1ab8ba6'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -118,11 +118,14 @@ def upgrade():
     sa.Column('language', sa.String(length=5), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('project_id', sa.Integer(), nullable=True),
-    sa.Column('parent_post_id', sa.Integer(), nullable=True),
+    sa.Column('parent_id', sa.Integer(), nullable=True),
+    sa.Column('path', sa.Text(), nullable=True),
+    sa.ForeignKeyConstraint(['parent_id'], ['post.id'], ),
     sa.ForeignKeyConstraint(['project_id'], ['project.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_post_path'), 'post', ['path'], unique=False)
     op.create_index(op.f('ix_post_timestamp'), 'post', ['timestamp'], unique=False)
     op.create_table('project_contributors',
     sa.Column('contributor_id', sa.Integer(), nullable=True),
@@ -179,6 +182,7 @@ def downgrade():
     op.drop_table('project_favorites')
     op.drop_table('project_contributors')
     op.drop_index(op.f('ix_post_timestamp'), table_name='post')
+    op.drop_index(op.f('ix_post_path'), table_name='post')
     op.drop_table('post')
     op.drop_table('link')
     op.drop_table('project')

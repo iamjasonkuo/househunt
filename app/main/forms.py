@@ -1,7 +1,7 @@
 from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
-    TextAreaField, SelectField, SelectMultipleField, FloatField
+    TextAreaField, SelectField, SelectMultipleField, FloatField, HiddenField
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
     Length, Optional
@@ -13,6 +13,7 @@ from app.selections import countries, states, tags
 class PostForm(FlaskForm):
     body = TextAreaField('Say something', validators=[
         DataRequired(), Length(min=1, max=140)])
+    parent_id = HiddenField('parent_id')
     submit = SubmitField('Submit')
 
 class SearchForm(FlaskForm):

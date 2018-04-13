@@ -139,8 +139,6 @@
     });
     </script>
     <script>
-      form = $('form').html().trim()
-
         function translate(sourceElem, destElem, sourceLang, destLang) {
             $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
             $.post('/translate', {
@@ -154,17 +152,31 @@
             });
         }
 
-        function test(destElem, parent_post_id) {
-            original_elem = $(destElem).html()
-            $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
-            $.get('/reply', {
-              parent_post_id: $(destElem).attr('id')
-            }).done(function(response) {
-              $(destElem).html(original_elem)
-              $(destElem).append(form)
-            }).fail(function() {
-              $(destElem).text("{{ 'it doesnt work.' }}")
-            });
+        function replyForm(destElem) {
+          var parent_id = $(destElem).attr('id').replace(/[^0-9.]/g, '')
+          var original_elem = $(destElem).html()
+          $(destElem).html('<img src="{{ url_for('static', filename='loading.gif') }}">');
+          $.post('/reply-form', {
+            parent_id: parent_id
+          }).done(function(response) {
+            $(destElem).html(original_elem)
+            $(destElem).append($(response).attr('id', 'parent'+parent_id))
+          }).fail(function() {
+            $(destElem).text("{{ 'it doesnt work.' }}")
+          });
         }
+
+        // function reply(destElem) {
+        //   var parent_id = $(destElem).attr('id').replace(/[^0-9.]/g, '')
+        //
+        //   $.post('/reply-post', {
+        //     parent_id: parent_id
+        //   }).done(function(response) {
+        //     $(destElem).text("{{ 'it works.' }}")
+        //   }).fail(function() {
+        //     $(destElem).append("{{ 'it doesnt work.' }}")
+        //   })
+        // }
+
     </script>
 {% endblock %}

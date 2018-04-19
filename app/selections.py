@@ -298,21 +298,4 @@ states = [
 
 tags = Tag.get_all_tags()
 
-#
-# property_types = [
-#     ('Single Family Residence', 'Single Family Residence'),
-#     ('Duplex', 'Duplex'),
-#     ('Multifamily', 'Multifamily'),
-#     ('Townhouse', 'Townhouse'),
-#     ('Condominium', 'Condominium'),
-#     ('Apartment', 'Apartment'),
-#     ('Studio', 'Studio')
-# ]#sfr, duplex, multiplex
-#
-# build_types = [
-#     ('Low Rise (Garden)', 'Low Rise (Garden)'),
-#     ('Mid Rise', 'Mid Rise'),
-#     ('High Rise', 'High Rise'),
-#     ('Dormitory', 'Dormitory'),
-#     ('Manufactured', 'Manufactured')
-# ]
+score_options = [(counter + 1, value) for counter, value in enumerate(range(1,11))]

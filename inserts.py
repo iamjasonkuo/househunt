@@ -1,5 +1,5 @@
 from app import db
-from app.models import User, Post, Project, ProjectImage, Address, Link, Tag
+from app.models import User, Post, Project, ProjectImage, Address, Link, Tag, UserRole
 
 
 db.session.add(Tag(category_id=1, name='Retail'))
@@ -21,5 +21,9 @@ db.session.add(Tag(category_id=3, name='Manufactured'))
 db.session.add(Tag(category_id=4, name='Landscape'))
 db.session.add(Tag(category_id=4, name='Interior'))
 db.session.add(Tag(category_id=4, name='Exterior'))
+db.session.add(UserRole(name='Member'))
+db.session.add(UserRole(name='Reviewer'))
+db.session.add(UserRole(name='Moderator'))
+db.session.add(UserRole(name='Admin'))
 db.session.commit()
 db.session.close()

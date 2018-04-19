@@ -1,19 +1,34 @@
 from flask import request
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
-    TextAreaField, SelectField, SelectMultipleField, FloatField, HiddenField
+    TextAreaField, SelectField, SelectMultipleField, FloatField, HiddenField, RadioField
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
     Length, Optional
 from app.helper import clean_list, normalize, Select2MultipleField
 from app.models import User, Project, Address
-from app.selections import countries, states, tags
+from app.selections import countries, states, tags, score_options
 
 
 class PostForm(FlaskForm):
     body = TextAreaField('Say something', validators=[
         DataRequired(), Length(min=1, max=140)])
     parent_id = HiddenField('parent_id')
+    submit = SubmitField('Submit')
+
+class ReviewForm(FlaskForm):
+    body = TextAreaField('Say something', validators=[
+        DataRequired(), Length(min=1, max=256)])
+    project_id = HiddenField('project_id')
+    overall_score = RadioField('Overall Score', choices=score_options, validators=[DataRequired()])
+    architectural_score = RadioField('Architectural Score', choices=score_options)
+    sustainability_score = RadioField('Sustainability Score', choices=score_options)
+    craftmanship_score = RadioField('Craftsmanship Score', choices=score_options)
+    landscape_score = RadioField('Landscape Score', choices=score_options)
+    submit = SubmitField('Submit')
+
+class HiddenDataForm(FlaskForm):
+    data = HiddenField('Data')
     submit = SubmitField('Submit')
 
 class SearchForm(FlaskForm):

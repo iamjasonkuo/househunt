@@ -16,7 +16,7 @@
             </a>
             said {{ moment(post.timestamp).fromNow() }}
             {% if post.is_review %}
-            in <a href="{{ url_for('project.project', project_id=post.post_project.id) }}"> {{ post.post_project.name }} </a>
+            in <a href="{{ url_for('project.project', project_id=post.commented_project.id) }}"> {{ post.commented_project.name }} </a>
             {% endif %}:
             <br>
             <span id="post{{ post.path }}">{{ post.body }}</span>

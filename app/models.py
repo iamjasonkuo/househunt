@@ -9,6 +9,7 @@ from app import db, login, admin
 from app.search import add_to_index, remove_from_index, query_index
 from flask_admin.contrib.sqla import ModelView, filters
 from wtforms import validators
+import numbers
 
 
 # from sqlalchemy.ext.associationproxy import association_proxy
@@ -79,6 +80,12 @@ project_contributors = db.Table('project_contributors',
     db.Column('project_id', db.Integer, db.ForeignKey('project.id'))
     )
 
+###User Access
+user_access = db.Table('user_access',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('access_level_id', db.Integer, db.ForeignKey('userrole.id'), primary_key=True)
+    )
+
 ###Project Tags
 project_tags = db.Table('project_tags',
     db.Column('project_id', db.Integer, db.ForeignKey('project.id')),
@@ -90,6 +97,7 @@ projectimage_tags = db.Table('projectimage_tags',
     db.Column('projectimage_id', db.Integer, db.ForeignKey('projectimage.id')),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'))
     )
+
 
 class CommonColumns(Base):
     __abstract__ = True
@@ -111,11 +119,11 @@ class User(SearchableMixin, UserMixin, db.Model, CommonColumns):
     first_name = db.Column(db.String(120))
     middle_name = db.Column(db.String(120))
     last_name = db.Column(db.String(120))
-    flagged_user = db.Column(db.Integer)
-    account_access = db.Column(db.Integer) #Boolean
     posts = db.relationship('Post', backref='author', lazy='dynamic') #1:M
     projects = db.relationship('Project', backref='creator', lazy='dynamic') #1:M
+    images = db.relationship('ProjectImage', backref='photo_uploader', lazy='dynamic') ##1:M
     favorites = db.relationship('Project', secondary=project_favorites, backref='admirer', lazy='dynamic') #M:M
+    access_level = db.relationship('UserRole', secondary=user_access, backref='member', lazy='dynamic') #M:M
     contributes = db.relationship('Project', secondary=project_contributors, backref='contributor', lazy='dynamic') #TODO: May need to refactor to include what type of contributor. Convert into association object? M:M
     followed = db.relationship(
         'User', secondary=followers,
@@ -167,7 +175,7 @@ class User(SearchableMixin, UserMixin, db.Model, CommonColumns):
             followers, (followers.c.followed_id == Post.user_id)).filter(
                 followers.c.follower_id == self.id)
         own = Post.query.filter_by(user_id=self.id)
-        return followed.union(own).order_by(Post.path)
+        return followed.union(own).order_by(Post._created.desc(), Post.path.asc())
 
     def favorite(self, project):
         if not self.is_favorited(project):
@@ -193,6 +201,25 @@ class User(SearchableMixin, UserMixin, db.Model, CommonColumns):
         return self.contributes.filter(
             project_contributors.c.project_id == project.id).count() > 0
 
+    def set_default_member_access(self):
+        db.session.execute(user_access.insert().values([(self.id, 1)]))
+
+    def add_role(self, role):
+        if not self.has_role(role):
+            self.access_level.append(role)
+
+    def remove_role(self, role):
+        if self.has_role(role):
+            self.access_level.remove(role)
+
+    def has_role(self, role):
+        return self.access_level.filter(
+            user_access.c.access_level_id == role.id).count() > 0
+
+    def list_roles(self):
+        roles = UserRole.query.join(
+            user_access, (user_access.c.user_id == UserRole.user_id))
+        return roles
 
 @login.user_loader
 def load_user(id):
@@ -207,16 +234,26 @@ class Post(SearchableMixin, db.Model, CommonColumns):
     body = db.Column(db.String(140))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     language = db.Column(db.String(5))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id')) ##M:1 User backref: author
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id')) ##M:1 Project backref: post_project
-    parent_id = db.Column(db.Integer, db.ForeignKey('post.id')) ##M:! Post backref: parent
     path = db.Column(db.Text, index=True)
+    overall_score = db.Column(db.Integer)
+    architectural_score = db.Column(db.Integer)
+    sustainability_score = db.Column(db.Integer)
+    craftmanship_score = db.Column(db.Integer)
+    landscape_score = db.Column(db.Integer)
+    interior_score = db.Column(db.Integer)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id')) #M:1 backref: author
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id')) #M:1 backref: commented_project
+    parent_id = db.Column(db.Integer, db.ForeignKey('post.id')) #backref: parent
     replies = db.relationship(
         'Post', backref=db.backref('parent', remote_side=[id]),
         lazy='dynamic')
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
+
+    def is_review(self):
+        ##TODO: Refactor so that it checks all scores fields for numbers
+        return isinstance(getattr(self, 'overall_score'), numbers.Number)
 
     def save(self):
         db.session.add(self)
@@ -247,10 +284,11 @@ class Project(db.Model, CommonColumns):
     lotsqft = db.Column(db.Integer)
     num_units = db.Column(db.Integer)
     year_renovated = db.Column(db.Integer)
+    publish = db.Column(db.Integer) ##Boolean
     address_id = db.Column(db.Integer, db.ForeignKey('address.id')) ##M:1 Address backref: Site
     user_id = db.Column(db.Integer, db.ForeignKey('user.id')) ##M:1 User backref: creator & admirer
     links = db.relationship('Link', backref='link_project', lazy='dynamic') ##1:M
-    posts = db.relationship('Post', backref='post_project', lazy='dynamic') ##1:M
+    posts = db.relationship('Post', backref='commented_project', lazy='dynamic') ##1:M
     images = db.relationship('ProjectImage', backref='image_project', lazy='dynamic') ##1:M
     tags = db.relationship('Tag', secondary=project_tags, backref='tag_project', lazy='dynamic') #1:M
     similar = db.relationship(
@@ -268,12 +306,6 @@ class Project(db.Model, CommonColumns):
     def get_project_tags(self, project):
         return self.tags.filter(project_tags.c.project_id == project.id)
 
-    def add_image(self, image):
-        self.images.append(image)
-
-    def remove_image(self, image):
-        self.images.remove(image)
-
     def add_link(self, link):
         self.links.append(link)
 
@@ -286,6 +318,10 @@ class Project(db.Model, CommonColumns):
     def remove_post(self, post):
         self.posts.remove(post)
 
+    def get_one_image_url(self):
+        return db.session.query(ProjectImage).filter_by(project_id=self.id).first().image_url
+        # return Project.query.join(ProjectImage).filter(ProjectImage.project_id == self.id).all()
+
 class ProjectImage(db.Model, CommonColumns):
     __tablename__ = 'projectimage'
     id = db.Column(db.Integer, primary_key=True)
@@ -293,6 +329,7 @@ class ProjectImage(db.Model, CommonColumns):
     image_url = db.Column(db.String)
     description = db.Column(db.String(120))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id')) ##M:1 photo_uploader
     project_id = db.Column(db.Integer, db.ForeignKey('project.id')) ##M:1 Project image_project
     tags = db.relationship('Tag', secondary=projectimage_tags, backref='tagged_image', lazy='dynamic')
 
@@ -360,7 +397,21 @@ class Tag(db.Model, CommonColumns):
             return
         return tag_list
 
+class UserRole(db.Model, CommonColumns):
+    __tablename__ = 'userrole'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(30))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id')) #M:1 backref: member
 
+    def __repr__(self):
+        return '<UserRole {}>'.format(self.name)
+
+class ProjectView(ModelView):
+    column_hide_backrefs = False
+    column_list = ('images', 'links')
+
+    def __init__(self, session, **kwargs):
+        super(ProjectView, self).__init__(Project, session, **kwargs)
 
 
 ##Listening for ElasticSearch
@@ -376,7 +427,10 @@ db.event.listen(db.session, 'after_commit', Post.after_commit)
 admin.add_view(ModelView(User, db.session, endpoint='test1'))
 admin.add_view(ModelView(Post, db.session, endpoint='test2'))
 admin.add_view(ModelView(Project, db.session, endpoint='test3'))
+# admin.add_view(ProjectView(Project, db.session, endpoint='test3'))
+# admin.add_view(ProjectView(db.session, endpoint='test3'))
 admin.add_view(ModelView(ProjectImage, db.session, endpoint='test4'))
 admin.add_view(ModelView(Address, db.session, endpoint='test5'))
 admin.add_view(ModelView(Link, db.session, endpoint='test6'))
 admin.add_view(ModelView(Tag, db.session, endpoint='test7'))
+admin.add_view(ModelView(UserRole, db.session, endpoint='test8'))

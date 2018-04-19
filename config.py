@@ -25,5 +25,17 @@ class Config(object):
     S3_ACCESS_KEY = os.environ.get('S3_ACCESS_KEY')
     S3_SECRET_ACCESS_KEY = os.environ.get('S3_SECRET_ACCESS_KEY')
     S3_LOCATION = 'http://{}.s3.amazonaws.com/'.format(S3_BUCKET_NAME)
+    AWS_USERNAME = os.environ.get('AWS_USERNAME')
+    AWS_PASSWORD = os.environ.get('AWS_PASSWORD')
+    FLASKS3_BUCKET_NAME = os.environ.get('FLASKS3_BUCKET_NAME')
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    UPLOADED_PATH = os.path.join(basedir, 'app/static/uploads')
+    DROPZONE_UPLOAD_MULTIPLE = True
+    DROPZONE_PARALLEL_UPLOADS = 3
+    DROPZONE_ALLOWED_FILE_CUSTOM = True
+    DROPZONE_ALLOWED_FILE_TYPE = 'image/*, .pdf'
+    # DROPZONE_REDIRECT_VIEW = 'results'
     DEBUG = True
     PORT = 5000
+    APP_ROOT = os.path.dirname(os.path.abspath(__file__))

@@ -1,0 +1,21 @@
+<div id="carouselExampleControls" class="carousel slide" data-ride="carousel">
+  <div class="carousel-inner">
+      {% for image in images %}
+          <div class="item {% if loop.index == 1 %}active{% endif %}" id="slide{{ loop.index }}">
+              <img src="{{ image.image_url }}" >
+              <div class="carousel-caption">
+                  <h4>{{ image.description }}</h4>
+                  <p>{{ image.description}}</p>
+              </div>
+          </div>
+      {% endfor %}
+  </div>
+  <a class="carousel-control-prev" href="#carouselExampleIndicators" role="button" data-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="sr-only">Previous</span>
+  </a>
+  <a class="carousel-control-next" href="#carouselExampleIndicators" role="button" data-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="sr-only">Next</span>
+  </a>
+</div>

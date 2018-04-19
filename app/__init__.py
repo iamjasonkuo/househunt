@@ -13,6 +13,8 @@ from flask_uploads import UploadSet, configure_uploads, IMAGES
 from flask_assets import Bundle, Environment
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
+from flask_dropzone import Dropzone
+from flask_s3 import FlaskS3
 from config import Config
 from elasticsearch import Elasticsearch
 
@@ -29,6 +31,8 @@ mail = Mail(app)
 moment = Moment(app)
 assets = Environment(app)
 admin = Admin(app, template_mode='bootstrap3')
+dropzone = Dropzone(app)
+s3 = FlaskS3(app)
 googlemaps = GoogleMaps(app)
 photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
@@ -45,6 +49,8 @@ def create_app(config_class=Config):
     moment.init_app(app)
     assets.init_app(app)
     admin.init_app(app)
+    dropzone.init_app(app)
+    s3.init_app(app)
     googlemaps.init_app(app)
 
     app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']]) \

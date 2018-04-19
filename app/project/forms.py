@@ -1,12 +1,15 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
-    TextAreaField, SelectField, SelectMultipleField, DateField, IntegerField
+    TextAreaField, SelectField, SelectMultipleField, DateField, IntegerField, HiddenField
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
     Length, Optional
+from flask_uploads import UploadSet, IMAGES
 from app.helper import clean_list, normalize, Select2MultipleField
 from app.models import User, Project, Address
 from app.selections import countries, states, tags, tags
+
+images = UploadSet('images', IMAGES)
 
 class ProjectCreateInitialForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired()])
@@ -24,7 +27,7 @@ class EditProjectForm(FlaskForm):
     headline = StringField('Headline', validators=[Optional()])
     description = TextAreaField('Project Description', validators=[Length(min=0, max=140)])
     completion_date = DateField('Completion Date', validators=[Optional()])
-    tags = SelectMultipleField('Tags', choices=tags)
+    tags = Select2MultipleField('Tags', choices=tags, description=u"tags description goes here", render_kw={"multiple": "multiple", "data-tags": "1"})
     address1 = StringField('Address 1', validators=[DataRequired()])
     address2 = StringField('Address 2', validators=[Optional()])
     city = StringField('City', validators=[DataRequired()])
@@ -33,15 +36,22 @@ class EditProjectForm(FlaskForm):
     country = SelectField('Country', choices=countries)
     submit = SubmitField('Submit')
 
-    def __init__(self, original_name, *args, **kwargs):
-        super(EditProjectForm, self).__init__(*args, **kwargs)
-        self.original_name = original_name
+    # def __init__(self, original_name, *args, **kwargs):
+    #     super(EditProjectForm, self).__init__(*args, **kwargs)
+    #     self.original_name = original_name
+    #
+    # def validate_projectname(self, name):
+    #     if name.data != self.original_name:
+    #         project = Project.query.filter_by(name=self.name.data).first()
+    #         if project is not None:
+    #             raise ValidationError('Please use a different project name.')
 
-    def validate_projectname(self, name):
-        if name.data != self.original_name:
-            project = Project.query.filter_by(name=self.name.data).first()
-            if project is not None:
-                raise ValidationError('Please use a different project name.')
+class PhotoForm(FlaskForm):
+    project_id = HiddenField('project_id')
+    photo = FileField('Photo', validators=[FileRequired(),FileAllowed(images, 'Images only!')])
+    description = StringField('Photo Description', validators=[Optional()])
+    tags = Select2MultipleField('Tags', choices=tags, description=u"tags description goes here", render_kw={"multiple": "multiple", "data-tags": "1"})
+    submit = SubmitField('Submit')
 
 class ProjectFilterForm(FlaskForm):
     beds = IntegerField('Beds', validators=[DataRequired()])

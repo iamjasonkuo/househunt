@@ -3,6 +3,8 @@ import json
 import requests
 import xmltodict
 import boto3, botocore
+import os
+import sys
 
 from flask import current_app
 from app.helper import Place, Error, prepFullAddressSearch
@@ -38,6 +40,24 @@ class AWS_api(object):
             aws_access_key_id=current_app.config['S3_ACCESS_KEY'],
             aws_secret_access_key=current_app.config['S3_SECRET_ACCESS_KEY']
             )
+
+    def upload_fileobj(filename, bucket, key, acl="public-read"):
+        print('INSIDE AWS_UPLOADFILEOBJ FILENAME: {}'.format(filename.__dict__))
+        try:
+            with open(filename, 'rb') as data:
+                self.s3.upload_fileobj(
+                    data,
+                    bucket,
+                    key,
+                    ExtraArgs={
+                        "ACL": acl,
+                        "ContentType": file.content_type
+                    }
+                )
+        except Exception as e:
+            print("Something Happened: ", e)
+            return e
+        return "{}{}".format(current_app.config["S3_LOCATION"], file.filename)
 
     def upload_file_to_s3(self, file, bucket_name, acl="public-read"):
         try:

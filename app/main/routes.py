@@ -1,11 +1,11 @@
 from app import db
-from app.main.forms import PostForm, SearchForm, EditAddressForm, TaggingForm, DemoForm
+from app.main.forms import PostForm, SearchForm, EditAddressForm, TaggingForm, DemoForm, ReviewForm, HiddenDataForm
 from app.helper import clean_list, normalize, convertArrayToString, convertStringToArray, allowed_file, tryconvert
 from app.main import bp
-from app.models import User, Post, Project, ProjectImage, Address, Link, Tag
+from app.models import User, Post, Project, ProjectImage, Address, Link, Tag, UserRole
 from app.service import *
 from datetime import datetime
-from flask import render_template, flash, redirect, url_for, request, jsonify, current_app, g, session
+from flask import render_template, flash, redirect, url_for, request, jsonify, current_app, g, session, send_from_directory
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 from werkzeug.utils import secure_filename
@@ -21,6 +21,14 @@ def before_request():
         current_user.last_seen = datetime.utcnow()
         db.session.commit()
         g.search_form = SearchForm()
+
+@bp.route('/css/<path:filename>')
+def css_static(filename):
+    return send_from_directory(current_app.root_path + '/static/css/', filename)
+
+@bp.route('/js/<path:filename>')
+def js_static(filename):
+    return send_from_directory(current_app.root_path + '/static/js/', filename)
 
 @bp.route('/', methods=['GET', 'POST'])
 @bp.route('/index', methods=['GET', 'POST'])
@@ -70,6 +78,19 @@ def search():
 #         if page > 1 else None
 #     return render_template('search.html', title='Search', addresses=addresses, next_url=next_url, prev_url=prev_url)
 
+@bp.route('/review-form', methods=['POST'])
+@login_required
+def review_form():
+    form = ReviewForm()
+    form.project_id.data = request.form['project_id']
+    return render_template('_comment.html', form=form)
+
+@bp.route('/review-post', methods=['POST'])
+@login_required
+def review_post():
+    # TODO: Figure out how to add post without redirecting; if redirecting is necessary, then have it redirect to the last known visted page
+    return redirect(url_for('main.index'))
+
 @bp.route('/reply-form', methods=['POST'])
 @login_required
 def reply_form():
@@ -80,7 +101,6 @@ def reply_form():
 @bp.route('/reply-post', methods=['POST'])
 @login_required
 def reply_post():
-    print('INSIDE REPLY_POST')
     form = PostForm(request.form)
     language = guess_language(form.body.data)
     if language == 'UNKNOWN' or len(language) > 5:
@@ -89,6 +109,7 @@ def reply_post():
     post = Post(body=form.body.data, parent=parent, author=current_user, language=language)
     post.save()
     flash('Your post is now live!')
+    # TODO: Figure out how to add post without redirecting; if redirecting is necessary, then have it redirect to the last known visted page
     return redirect(url_for('main.index'))
 
 @bp.route('/upload', methods=['GET', 'POST'])

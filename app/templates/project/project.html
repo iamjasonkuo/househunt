@@ -36,6 +36,9 @@
                 {% else %}
                 <p><a href="{{ url_for('project.uncontribute', project_id=project.id) }}">Uncontribute</a></p>
                 {% endif %}
+                {% if images %}
+                  {% include '_carousel.html' %}
+                {% endif %}
             </td>
         </tr>
     </table>

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block scripts %}
+    {{ super() }}
+    {% if mymap %}
+      {{mymap.js}}
+    {% endif %}
+{% endblock %}
+
+{% block app_content %}
+    {% if mymap %}
+      {{mymap.html}}
+    {% endif %}
+    {% for project in projects %}
+      <a href="{{ url_for('project.project', project_id=project.id) }}">
+        {% include '_project.html' %}
+      </a>
+    {% endfor %}
+{% endblock %}

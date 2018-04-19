@@ -1,7 +1,7 @@
 <table class="table table-hover">
     <tr>
       <td width="70px">
-        <span>image here</span>
+        <span><img width="220" height="auto" src="{{ project.get_one_image_url() }}" ></span>
       </td>
       <td>
           <a href="{{ url_for('user.user', username=project.creator.username) }}">

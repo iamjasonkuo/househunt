@@ -2,12 +2,7 @@ import asyncio
 import string
 from abc import ABCMeta, abstractmethod
 from wtforms import SelectMultipleField
-# from flask import render_template, flash, redirect, url_for, request, jsonify, current_app, g, session
-# from app import db
-# from app.models import User, Post, Project, ProjectImage, Address, Link, Tag
-# # from app.main.forms import SearchForm, PostForm
-# from app.project.forms import ProjectCreateInitialForm
-
+from wtforms.validators import ValidationError
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
@@ -62,18 +57,6 @@ def tryconvert(value, default, *types):
             continue
     return default
 
-
-#
-# from nltk import metrics, stem, tokenize
-#
-# stemmer = stem.PorterStemmer()
-#
-# def normalize(s):
-#     words = tokenize.wordpunct_tokenize(s.lower().strip())
-#     return ' '.join([stemmer.stem(w) for w in words])
-#
-# def fuzzy_match(s1, s2, max_dist=3):
-#     return metrics.edit_distance(normalize(s1), normalize(s2)) <= max_dist
 
 class Error(Exception):
     """Base class for Twitter errors"""
@@ -318,3 +301,16 @@ class Select2MultipleField(SelectMultipleField):
             self.data = ",".join(valuelist)
         else:
             self.data = ""
+
+
+
+# http://exploreflask.com/en/latest/forms.html
+class Unique(object):
+    def __init__(self, model, field, message=u'This element already exists.'):
+        self.model = model
+        self.field = field
+
+    def __call__(self, form, field):
+        check = self.model.query.filter(self.field == field.data).first()
+        if check:
+            raise ValidationError(self.message)

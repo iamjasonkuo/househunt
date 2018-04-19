@@ -2,15 +2,9 @@
 
 {% block app_content %}
 <h1>Upload Your Files Bro</h1>
-
-<form action="{{ url_for('main.upload') }}" method="POST" enctype="multipart/form-data">
-
-    <label for="user_file">Upload Your File</label>
-    <br></br>
-    <input type="file" name="user_file">
-    <br></br>
-    <button type="submit">Upload</button>
-
+<form action="{{ url_for('project.upload', project_id=form.data.data) }}" class="dropzone" method="POST" enctype="multipart/form-data" id="uploadProjectImages">
 </form>
+<!-- {{ dropzone.create(action_view='project.upload', project_id=form.data.data) }} -->
+{{ wtf.quick_form(form) }}
 
 {% endblock %}

@@ -1,3 +1,9 @@
 {% import 'bootstrap/wtf.html' as wtf %}
 
+{% if form.parent_id.data %}
 {{ wtf.quick_form(form, action="/reply-post", method="post") }}
+{% endif %}
+
+{% if form.project_id.data %}
+{{ wtf.quick_form(form, action="/review-post", method="post") }}
+{% endif %}

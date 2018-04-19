@@ -4,6 +4,9 @@
 {% block head %}
     {{ super() }}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{url_for('main.css_static', filename='dropzone.css')}}">
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='dropzone.css') }}"> -->
+    <!-- {{ dropzone.load() }} -->
 {% endblock %}
 
 {% block title %}
@@ -78,6 +81,16 @@
 {% block scripts %}
     {{ super() }}
     {{ moment.include_moment() }}
+    <!-- <script src="{{ url_for('static', filename='dropzone.js') }}"></script> -->
+    <script type="text/javascript" src="{{url_for('main.js_static', filename='dropzone.js')}}"></script>
+    <script>
+      Dropzone.options.uploadProjectImages = {
+        // resize: function(file) {
+        //   console.log("resize");
+        //   return {"srcX":0, "srcY":0, "srcWidth":300, "srcHeight":300}
+        // },
+      };
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
     <script type="text/javascript">
     $(document).ready(function() {
@@ -165,18 +178,5 @@
             $(destElem).text("{{ 'it doesnt work.' }}")
           });
         }
-
-        // function reply(destElem) {
-        //   var parent_id = $(destElem).attr('id').replace(/[^0-9.]/g, '')
-        //
-        //   $.post('/reply-post', {
-        //     parent_id: parent_id
-        //   }).done(function(response) {
-        //     $(destElem).text("{{ 'it works.' }}")
-        //   }).fail(function() {
-        //     $(destElem).append("{{ 'it doesnt work.' }}")
-        //   })
-        // }
-
     </script>
 {% endblock %}
